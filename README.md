@@ -10,6 +10,8 @@ Player controls a single character in an open and responsive environment. It wil
 
 Whenever the player is presented with a challenge (quest/storyline/combat), it has to be possible to overcome the challenge in multiple different ways (stealth, combat, magic, talking their way out of the problem, ...). Not all of the solutions need to be available all the time, but there have to be multiple ways around every game-related problem.
 
+Player is not hard-pressed to go for the main quest, there is plenty of possibilities for exploration, hidden dungeons, side quests, etc. available at all times. The gameplay should be similar to Elder Scrolls or Fallout 2 in this regard.
+
 ### Character Management
 Traditional old-school character races will be provided for the player characters (humans, dwarves, elves, halflings, ...).
 
@@ -21,7 +23,8 @@ Movement in the world is unrestricted, without any apparent grid. The sense of e
 ### Combat
 Is realtime
 
-### Dialog
+### Dialogue
+Plays vital role in the gameplay, it's the main way to start/progress/end quests, provides clues to find hidden dungeons, etc. Hidden dialogue options are revealed based on quest progress, character reputation, skills, or special abilities of the character (similar to disciplines in VtM Bloodlines).
 
 ### Inventory
 
@@ -38,3 +41,4 @@ Is realtime
  - Elder Scrolls
  - Fallout 1&2
  - Planescape: Torment
+ - VtM Bloodlines
