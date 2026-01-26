@@ -34,6 +34,14 @@ Plays vital role in the gameplay, it's the main way to start/progress/end quests
 
 ### Magic
 
+## World Building and Terrain Generation
+
+### World Building
+Is closely tied to the story, the world should be "rich" (similar to the later Elder Scrolls games) - there are animals and creatures roaming the nature, camps, dungeons to explore. Not all of the areas are safe to explore by inexperienced characters and not everything explorable is immediately visible. Sometimes additional info is needed to discover the location of ancient ruins, etc.
+
+### Terrain Generation
+Terrain is generated proceduraly from bitmap data, it's 2.5D.
+
 ## Modules
 
 ## Influences
