@@ -1,12 +1,12 @@
 # TODO — Next Steps / Implementation Plan
 
-- [ ] Create Unity project with LTS + URP + required packages (Input System, Cinemachine, Yarn Spinner)
-- [ ] Add project folder structure:
-  - [ ] Scenes/
-  - [ ] Prefabs/
-  - [ ] Scripts/
-  - [ ] Art/placeholder/
-  - [ ] Docs/
+- [x] Create Unity project with LTS + URP + required packages (Input System, Cinemachine, Yarn Spinner)
+- [x] Add project folder structure:
+  - [x] Assets/Scenes/
+  - [x] Assets/Prefabs/
+  - [x] Assets/Scripts/
+  - [x] Assets/Art/placeholder/
+  - [x] Assets/Docs/
 - [ ] Implement Player prefab:
   - [ ] CharacterController-based movement component
   - [ ] PlayerAttributes + ScriptableObject base values
