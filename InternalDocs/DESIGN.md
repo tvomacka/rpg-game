@@ -16,7 +16,7 @@ This document captures the agreed design decisions for the first MVP of the rpg-
 All of the above use placeholder art and animations. Items, inventory, UI, character sheet, and other systems are excluded from MVP.
 
 ## Tech Stack (decided)
-- Unity: Use the latest Long-Term Support (LTS) release available at project start (example: 2022.3 LTS).
+- Unity: 6.3LTS (latest long-term support version).
 - Render pipeline: Universal Render Pipeline (URP).
 - Input: New Unity Input System package.
 - Camera: Cinemachine (for smooth follow and damping).
