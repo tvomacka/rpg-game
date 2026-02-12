@@ -79,6 +79,9 @@ All of the above use placeholder art and animations. Items, inventory, UI, chara
 7. Implement simple interactable (lever) prefab and wiring to events.
 8. Add unit and play-mode tests as appropriate for runtime logic.
 
+### Testing Policy
+Whenever a new feature is added, a bug is fixed, or expected behaviour changes, include appropriate automated tests to cover the change. Prefer fast unit tests for small, deterministic logic (stat calculations, event dispatching, data transformations), integration tests for subsystem interactions (e.g., PlayerAttributes + StatModifiers), and play-mode tests for runtime and scene-driven behaviour (movement, dialogue interactions, interactables). Tests should assert the intended behaviour, cover the regression case that prompted the change, and be named clearly so future readers can understand the intent (e.g., FeatureName_StateUnderTest_ExpectedResult). Keep tests small, deterministic, and free of external flakiness; mock or inject dependencies where practical. Add tests to the repository's test runner and CI so regressions are caught early.
+
 ## TODOs / Open questions for later
 - Decide whether to use Unity Terrain or custom mesh generation for final system; start with Terrain for the MVP.
 - Addressables integration for streaming larger maps (deferred until after MVP).
