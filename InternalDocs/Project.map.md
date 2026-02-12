@@ -7,3 +7,7 @@
 ## MVP Design
 
 [DESIGN.md](../docs/DESIGN.md)
+
+## Testing
+
+[Testing.md](./Testing.md)
