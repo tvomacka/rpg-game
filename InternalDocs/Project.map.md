@@ -4,9 +4,15 @@
 
 [README.md](../README.md)
 
-## MVP Design
+## MVP
 
-[DESIGN.md](../docs/DESIGN.md)
+### Design
+
+[DESIGN.md](./DESIGN.md)
+
+### TODO List
+
+[TODO.md](./TODO.md)
 
 ## Testing
 
