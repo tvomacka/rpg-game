@@ -20,5 +20,5 @@ we are in a windows system unless otherwise noted. ALWAYS use powershell for you
 - When you show me a potential error or miss, start your response with❗️ emoji
  
 ## Project 
-To get an understanding of the project, read the [Project Map](InternalDocs/Project.map.md).
-Follow those links as needed
+To get an understanding of the project, read [DESIGN.md](DESIGN.md) — the single source of truth for the game.
+For running tests, see [Docs/Testing.md](Docs/Testing.md).
