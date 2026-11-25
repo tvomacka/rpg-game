@@ -1,0 +1,22 @@
+{
+    "name": "RpgGame.Editor",
+    "rootNamespace": "RpgGame.Editor",
+    "references": [
+        "RpgGame",
+        "Unity.InputSystem",
+        "Unity.Cinemachine",
+        "Unity.AI.Navigation",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

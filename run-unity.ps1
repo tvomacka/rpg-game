@@ -81,94 +81,63 @@ if (-not $UnityPath) {
 
 Write-Log "Using Unity executable: $UnityPath"
 
+# Unity.exe is a GUI-subsystem executable: the call operator (&) returns immediately without waiting
+# and $LASTEXITCODE stays empty. Start the process explicitly, wait for it, and return its exit code.
+function Invoke-Unity {
+    param([string[]] $UnityArgs)
+    $quoted = $UnityArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
+    $proc = Start-Process -FilePath $UnityPath -ArgumentList $quoted -PassThru -NoNewWindow
+    $null = $proc.Handle # cache the handle so ExitCode is readable after exit
+    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+        Write-Log "Unity did not finish within $TimeoutSeconds s; killing it."
+        try { $proc.Kill() } catch {}
+        return 124
+    }
+    return $proc.ExitCode
+}
+
+
 # Ensure test results dir
 if (-not (Test-Path $TestResultsDir)) { New-Item -ItemType Directory -Path $TestResultsDir -Force | Out-Null }
-$logFile = Join-Path $TestResultsDir 'unity.log'
+$projectFullPath = (Resolve-Path $ProjectPath).Path
 
-# Build base arguments
-$baseArgs = @(
-    '-batchmode',
-    '-nographics',
-    '-silent-crashes',
-    '-projectPath', (Resolve-Path $ProjectPath).Path,
-    '-logFile', $logFile
-)
+function Get-BaseArgs {
+    param([string] $LogFile)
+    return @('-batchmode', '-nographics', '-silent-crashes', '-projectPath', $projectFullPath, '-logFile', $LogFile)
+}
 
 # If no test flags provided, we still want to start Unity in batchmode to force a compile and then quit
 if (-not $RunEditModeTests -and -not $RunPlayModeTests) {
     Write-Log "No test flags provided; launching Unity in batchmode to force script compilation and exit. Use -RunEditModeTests/-RunPlayModeTests to run tests."
-    $args = $baseArgs + @('-quit')
-    $startInfo = & "$UnityPath" $args
-    # Unity returns exit code from process; capture it
-    $exitCode = $LASTEXITCODE
+    $logFile = Join-Path $TestResultsDir 'unity.log'
+    $exitCode = Invoke-Unity ((Get-BaseArgs $logFile) + @('-quit'))
     Write-Log "Unity exited with code $exitCode. Log: $logFile"
     exit $exitCode
 }
 
-# Build test args
-$resultsFiles = @()
-if ($RunEditModeTests) {
-    $results = Join-Path $TestResultsDir "TestResults-EditMode-$(Get-Date -Format 'yyyyMMdd-HHmmss').xml"
-    $resultsFiles += $results
-    $testArgs = @('-runTests', '-testPlatform', 'EditMode', '-testResults', $results)
-}
-if ($RunPlayModeTests) {
-    $results = Join-Path $TestResultsDir "TestResults-PlayMode-$(Get-Date -Format 'yyyyMMdd-HHmmss').xml"
-    $resultsFiles += $results
-    $testArgs = @()
-    # If both flags set, run tests in separate runs to select platform cleanly
+# Runs one test platform in its own Unity invocation and returns 0 only if a results file was written
+# and reports no failures. Do NOT pass -quit with -runTests: Unity then quits before the tests run.
+function Invoke-UnityTests {
+    param([string] $Platform)
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $resultsFile = Join-Path $TestResultsDir "TestResults-$Platform-$stamp.xml"
+    $logFile = Join-Path $TestResultsDir "unity-$Platform.log"
+    Write-Log "Running $Platform tests. Results -> $resultsFile, log -> $logFile"
+    $rc = Invoke-Unity ((Get-BaseArgs $logFile) + @('-runTests', '-testPlatform', $Platform, '-testResults', $resultsFile))
+    Write-Log "Unity $Platform exit code: $rc"
+
+    if (-not (Test-Path $resultsFile)) {
+        Write-Host "ERROR: $Platform produced no results file - tests did not run (compile error?). See $logFile" -ForegroundColor Red
+        return 1
+    }
+    $run = ([xml](Get-Content $resultsFile -Raw)).'test-run'
+    Write-Log "$Platform result: $($run.result) - total $($run.total), passed $($run.passed), failed $($run.failed), skipped $($run.skipped)"
+    if ([int]$run.failed -gt 0 -or $rc -ne 0) { return 1 }
+    return 0
 }
 
-# If both Edit and Play requested, run two Unity invocations (clean)
 $overallExit = 0
-if ($RunEditModeTests -and $RunPlayModeTests) {
-    Write-Log "Running EditMode tests first, then PlayMode tests in a second Unity invocation."
-
-    # EditMode
-    $editResults = Join-Path $TestResultsDir "TestResults-EditMode-$(Get-Date -Format 'yyyyMMdd-HHmmss').xml"
-    $args1 = $baseArgs + @('-runTests', '-testPlatform', 'EditMode', '-testResults', $editResults, '-quit')
-    Write-Log "Starting Unity (EditMode tests). Results: $editResults"
-    & "$UnityPath" $args1
-    $rc1 = $LASTEXITCODE
-    Write-Log "Unity EditMode exit code: $rc1"
-
-    # PlayMode
-    $playResults = Join-Path $TestResultsDir "TestResults-PlayMode-$(Get-Date -Format 'yyyyMMdd-HHmmss').xml"
-    $args2 = $baseArgs + @('-runTests', '-testPlatform', 'PlayMode', '-testResults', $playResults, '-quit')
-    Write-Log "Starting Unity (PlayMode tests). Results: $playResults"
-    & "$UnityPath" $args2
-    $rc2 = $LASTEXITCODE
-    Write-Log "Unity PlayMode exit code: $rc2"
-
-    if ($rc1 -ne 0 -or $rc2 -ne 0) { $overallExit = 1 } else { $overallExit = 0 }
-    Write-Log "Combined exit status: $overallExit"
-    Write-Log "Logs and results are in: $TestResultsDir"
-    exit $overallExit
-}
-
-# Single-mode run (either EditMode or PlayMode)
-if ($RunEditModeTests -and -not $RunPlayModeTests) {
-    $resultsFile = Join-Path $TestResultsDir "TestResults-EditMode-$(Get-Date -Format 'yyyyMMdd-HHmmss').xml"
-    $args = $baseArgs + @('-runTests', '-testPlatform', 'EditMode', '-testResults', $resultsFile, '-quit')
-    Write-Log "Running Unity tests (EditMode). Results -> $resultsFile"
-    & "$UnityPath" $args
-    $exitCode = $LASTEXITCODE
-    Write-Log "Unity exit code: $exitCode"
-    Write-Log "Results and logs: $TestResultsDir"
-    exit $exitCode
-}
-
-if ($RunPlayModeTests -and -not $RunEditModeTests) {
-    $resultsFile = Join-Path $TestResultsDir "TestResults-PlayMode-$(Get-Date -Format 'yyyyMMdd-HHmmss').xml"
-    $args = $baseArgs + @('-runTests', '-testPlatform', 'PlayMode', '-testResults', $resultsFile, '-quit')
-    Write-Log "Running Unity tests (PlayMode). Results -> $resultsFile"
-    & "$UnityPath" $args
-    $exitCode = $LASTEXITCODE
-    Write-Log "Unity exit code: $exitCode"
-    Write-Log "Results and logs: $TestResultsDir"
-    exit $exitCode
-}
-
-# Fallback
-Write-Host "No operation performed." -ForegroundColor Yellow
-exit 3
+if ($RunEditModeTests) { if ((Invoke-UnityTests 'EditMode') -ne 0) { $overallExit = 1 } }
+if ($RunPlayModeTests) { if ((Invoke-UnityTests 'PlayMode') -ne 0) { $overallExit = 1 } }
+Write-Log "Combined exit status: $overallExit. Logs and results are in: $TestResultsDir"
+exit $overallExit

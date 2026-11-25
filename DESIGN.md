@@ -100,6 +100,8 @@ One small, playable crime scene, with placeholder art. It proves the investigati
 
 Done when a stranger can play it in 10–15 minutes and reach a conclusion without help.
 
+The case content, milestones and verification steps are in **[Docs/MVP-plan.md](Docs/MVP-plan.md)**.
+
 ## 9. Tech stack
 
 - Unity 6.3 LTS, URP, new Input System, Cinemachine (orthographic follow), AI Navigation (NavMesh) for click-to-move.

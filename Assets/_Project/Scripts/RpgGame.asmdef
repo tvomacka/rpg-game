@@ -1,7 +1,11 @@
 {
     "name": "RpgGame",
     "rootNamespace": "RpgGame",
-    "references": [],
+    "references": [
+        "Unity.InputSystem",
+        "Unity.Cinemachine",
+        "UnityEngine.UI"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
