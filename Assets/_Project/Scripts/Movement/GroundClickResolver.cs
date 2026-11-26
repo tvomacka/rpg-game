@@ -15,6 +15,8 @@ namespace RpgGame.Movement
         PointerOverUi,
         NoGroundHit,
         OffNavMesh,
+        /// <summary>The click hit an interactable; the interactor walks there instead.</summary>
+        HandledByInteractable,
     }
 
     public readonly struct ClickResolution
