@@ -56,8 +56,10 @@ In the editor: **RpgGame → Rebuild FirstCase Scene**. From the command line:
 
 ## Play-mode screenshot
 
-`ScreenshotCapture` is an `[Explicit]` PlayMode test: normal runs skip it. It walks the player into the
-study, clicks the kitchen, and writes `TestResults/Screenshots/FirstCase-play.png`. It needs a graphics
+`ScreenshotCapture` is an `[Explicit]` PlayMode fixture: normal runs skip it. `CaptureFirstCaseInPlayMode`
+walks the player into the study, clicks the kitchen, and writes `TestResults/Screenshots/FirstCase-play.png`;
+`CaptureInteractInPlayMode` inspects the wall clock and hovers the desk, writing `M2-Interact.png` (the UI canvas
+is switched to Screen Space – Camera for the shot, because overlay UI doesn't render into a RenderTexture). It needs a graphics
 device, so run it without `-nographics`:
 
 ```powershell
