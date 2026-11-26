@@ -34,6 +34,7 @@ namespace RpgGame.Editor
         private const string InputActionsPath = "Assets/_Project/Input/GameControls.inputactions";
 
         private const int IgnoreRaycastLayer = 2;
+        private const int NotWalkableArea = 1; // built-in NavMesh area index
 
         // House footprint (metres), centred on the origin. Camera looks from the south-west (−x, −z).
         private const float HouseWidth = 10f;   // x
@@ -107,7 +108,8 @@ namespace RpgGame.Editor
             var level = new GameObject("Level");
             var surface = level.AddComponent<NavMeshSurface>();
             surface.collectObjects = CollectObjects.Children;
-            surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+            // Physics colliders, not render meshes: the invisible full-height wall blockers must be baked.
+            surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
 
             // Big enough that the ground's edge stays off-screen even at maximum zoom-out.
             Box("Yard", level.transform, new Vector3(0f, -0.1f, 0f), new Vector3(80f, 0.2f, 80f), mats.Grass);
@@ -115,25 +117,26 @@ namespace RpgGame.Editor
             var house = new GameObject("House").transform;
             house.SetParent(level.transform, false);
             Box("Floor", house, new Vector3(0f, 0f, 0f), new Vector3(HouseWidth, 0.04f, HouseDepth), mats.Floor);
+            Transform walls = NotWalkableGroup("Walls", house);
+            Transform blockers = NotWalkableGroup("WallBlockers", house);
 
             float hw = HouseWidth / 2f, hd = HouseDepth / 2f, t = WallThickness;
 
             // Back walls (camera looks at their inner face): full height.
-            Wall("Wall_North", house, -hw - t / 2f, hw + t / 2f, hd, alongX: true, FullWallHeight, mats.Wall);
-            Wall("Wall_East", house, -hd, hd, hw, alongX: false, FullWallHeight, mats.Wall);
+            Wall("Wall_North", walls, blockers, -hw - t / 2f, hw + t / 2f, hd, alongX: true, FullWallHeight, mats.Wall);
+            Wall("Wall_East", walls, blockers, -hd, hd, hw, alongX: false, FullWallHeight, mats.Wall);
 
             // Camera-facing walls: low cutaways so the interior stays visible.
             float doorL = FrontDoorX - DoorWidth / 2f, doorR = FrontDoorX + DoorWidth / 2f;
-            Wall("Wall_South_A", house, -hw - t / 2f, doorL, -hd, alongX: true, CutawayWallHeight, mats.WallCutaway);
-            Wall("Wall_South_B", house, doorR, hw + t / 2f, -hd, alongX: true, CutawayWallHeight, mats.WallCutaway);
-            Wall("Wall_West", house, -hd, hd, -hw, alongX: false, CutawayWallHeight, mats.WallCutaway);
+            Wall("Wall_South_A", walls, blockers, -hw - t / 2f, doorL, -hd, alongX: true, CutawayWallHeight, mats.WallCutaway);
+            Wall("Wall_South_B", walls, blockers, doorR, hw + t / 2f, -hd, alongX: true, CutawayWallHeight, mats.WallCutaway);
+            Wall("Wall_West", walls, blockers, -hd, hd, -hw, alongX: false, CutawayWallHeight, mats.WallCutaway);
 
             // Study | kitchen partition with a doorway. Its study-side face points at the camera, so it is low too.
-            Wall("Partition_A", house, -hd, -DoorWidth / 2f, 0f, alongX: false, CutawayWallHeight, mats.WallCutaway);
-            Wall("Partition_B", house, DoorWidth / 2f, hd, 0f, alongX: false, CutawayWallHeight, mats.WallCutaway);
+            Wall("Partition_A", walls, blockers, -hd, -DoorWidth / 2f, 0f, alongX: false, CutawayWallHeight, mats.WallCutaway);
+            Wall("Partition_B", walls, blockers, DoorWidth / 2f, hd, 0f, alongX: false, CutawayWallHeight, mats.WallCutaway);
 
-            var props = new GameObject("Props").transform;
-            props.SetParent(level.transform, false);
+            Transform props = NotWalkableGroup("Props", level.transform);
             Box("Study_Desk", props, new Vector3(-3f, 0.4f, 1.9f), new Vector3(1.8f, 0.8f, 0.8f), mats.Furniture);
             Box("Kitchen_Table", props, new Vector3(2.6f, 0.4f, -0.6f), new Vector3(1.6f, 0.8f, 1.0f), mats.Furniture);
             Box("Kitchen_Stove", props, new Vector3(4.1f, 0.6f, 2.3f), new Vector3(1.2f, 1.2f, 0.8f), mats.Furniture);
@@ -148,14 +151,42 @@ namespace RpgGame.Editor
         }
 
         /// <summary>Wall segment from <paramref name="from"/> to <paramref name="to"/> along one axis, at a fixed coordinate on the other.</summary>
-        private static void Wall(string name, Transform parent, float from, float to, float at, bool alongX, float height, Material mat)
+        /// <remarks>
+        /// Wall height is visual only. A cutaway (low) wall also gets an invisible full-height blocker,
+        /// otherwise the agent's step height (0.75 m for Humanoid) lets the NavMesh bake straight over it.
+        /// Blockers sit on Ignore Raycast so clicks go through them to the floor.
+        /// </remarks>
+        private static void Wall(string name, Transform parent, Transform blockerParent, float from, float to, float at,
+                                 bool alongX, float height, Material mat)
         {
-            float length = to - from, mid = (from + to) / 2f;
-            Vector3 pos = alongX ? new Vector3(mid, height / 2f, at) : new Vector3(at, height / 2f, mid);
-            Vector3 size = alongX
-                ? new Vector3(length, height, WallThickness)
-                : new Vector3(WallThickness, height, length);
-            Box(name, parent, pos, size, mat);
+            Box(name, parent, WallCenter(from, to, at, alongX, height), WallSize(from, to, alongX, height), mat);
+            if (height >= FullWallHeight) return;
+
+            var blocker = new GameObject(name + "_Blocker") { layer = IgnoreRaycastLayer };
+            blocker.transform.SetParent(blockerParent, false);
+            blocker.transform.localPosition = WallCenter(from, to, at, alongX, FullWallHeight);
+            blocker.AddComponent<BoxCollider>().size = WallSize(from, to, alongX, FullWallHeight);
+        }
+
+        private static Vector3 WallCenter(float from, float to, float at, bool alongX, float height)
+        {
+            float mid = (from + to) / 2f;
+            return alongX ? new Vector3(mid, height / 2f, at) : new Vector3(at, height / 2f, mid);
+        }
+
+        private static Vector3 WallSize(float from, float to, bool alongX, float height) =>
+            alongX ? new Vector3(to - from, height, WallThickness) : new Vector3(WallThickness, height, to - from);
+
+        /// <summary>Group whose whole hierarchy bakes as Not Walkable, so nothing can be stood on or stepped over.</summary>
+        private static Transform NotWalkableGroup(string name, Transform parent)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            var modifier = go.AddComponent<NavMeshModifier>();
+            modifier.overrideArea = true;
+            modifier.area = NotWalkableArea;
+            modifier.applyToChildren = true;
+            return go.transform;
         }
 
         private static GameObject Box(string name, Transform parent, Vector3 position, Vector3 size, Material mat)
