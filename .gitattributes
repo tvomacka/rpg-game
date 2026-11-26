@@ -1,4 +1,4 @@
-﻿# Git LFS: binary assets. Must be in place before a binary is committed -
+# Git LFS: binary assets. Must be in place before a binary is committed -
 # moving existing binaries into LFS later means rewriting history.
 # Unity YAML (*.unity *.prefab *.mat *.meta *.controller *.anim) stays plain text so it diffs and merges.
 
