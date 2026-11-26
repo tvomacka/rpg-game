@@ -18,7 +18,8 @@ namespace RpgGame.Tests.PlayMode
         private const float WestWallX = -5f;
         private const float FrontDoorMinX = -3.3f;
         private const float FrontDoorMaxX = -1.7f;
-        private const float FullWallHeight = 2.5f;
+        /// <summary>Walls lower than this are cutaways (0.6 m); full walls are 3 m.</summary>
+        private const float CutawayMaxHeight = 1.5f;
 
         private PlayerMover _mover;
 
@@ -82,12 +83,17 @@ namespace RpgGame.Tests.PlayMode
             int checkedWalls = 0;
             foreach (Transform wall in walls.transform)
             {
-                Vector3 size = wall.localScale;
-                if (size.y >= FullWallHeight) continue; // only the low cutaways
+                // Each child is one wall segment made of KayKit pieces: measure what it looks like.
+                Renderer[] renderers = wall.GetComponentsInChildren<Renderer>();
+                Assert.That(renderers, Is.Not.Empty, $"'{wall.name}' has no visible pieces");
+                Bounds bounds = renderers[0].bounds;
+                foreach (Renderer r in renderers) bounds.Encapsulate(r.bounds);
+                Vector3 size = bounds.size;
+                if (size.y >= CutawayMaxHeight) continue; // only the low cutaways
                 checkedWalls++;
 
                 Vector3 normal = size.x < size.z ? Vector3.right : Vector3.forward; // across the thin axis
-                Vector3 centre = new(wall.position.x, 0f, wall.position.z);
+                Vector3 centre = new(bounds.center.x, 0f, bounds.center.z);
                 Vector3 a = OnNavMesh(centre - normal);
                 Vector3 b = OnNavMesh(centre + normal);
 

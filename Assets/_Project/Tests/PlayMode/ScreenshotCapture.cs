@@ -69,6 +69,28 @@ namespace RpgGame.Tests.PlayMode
                 hover.Refresh(cam.WorldToScreenPoint(desk.GetComponentInChildren<Collider>().bounds.center)));
         }
 
+        /// <summary>#11: the KayKit scene with all three people in frame — Mira in the kitchen, Hollen in the yard.</summary>
+        [UnityTest, Timeout(60000)]
+        public IEnumerator CaptureArtInPlayMode()
+        {
+            RequireGraphics();
+            yield return FirstCaseMovementTests.LoadScene();
+            var mover = Object.FindAnyObjectByType<PlayerMover>();
+
+            // Inside the study near the front door (roof hidden), facing the yard, so Hollen and Mira both fit.
+            mover.MoveTo(new Vector3(-2.2f, 0f, -1.6f));
+            yield return FirstCaseMovementTests.WalkUntilArrived(mover);
+
+            var vcam = Object.FindAnyObjectByType<Unity.Cinemachine.CinemachineCamera>();
+            vcam.GetComponent<RpgGame.CameraControl.CameraZoom>().enabled = false;
+            Unity.Cinemachine.LensSettings lens = vcam.Lens;
+            lens.OrthographicSize = 8.5f;
+            vcam.Lens = lens;
+            yield return new WaitForSeconds(1.5f); // let the damped camera settle
+
+            yield return Capture(Camera.main, "011-FirstCase-art.png");
+        }
+
         // ---------- helpers ----------
 
         private static void RequireGraphics()

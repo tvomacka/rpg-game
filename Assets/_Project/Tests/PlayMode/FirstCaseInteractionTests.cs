@@ -69,6 +69,38 @@ namespace RpgGame.Tests.PlayMode
             }
         }
 
+        [Test]
+        public void Highlight_TintsEveryVisibleMeshOfEveryInteractable()
+        {
+            var block = new MaterialPropertyBlock();
+            int baseColor = Shader.PropertyToID("_BaseColor");
+            var tint = new Color(1f, 0.85f, 0.35f);
+
+            foreach (Interactable it in Object.FindObjectsByType<Interactable>(FindObjectsSortMode.None))
+            {
+                Renderer[] renderers = it.GetComponentsInChildren<Renderer>();
+                Assert.That(renderers, Is.Not.Empty, $"{it.name} has nothing to highlight");
+                it.SetHighlighted(true, tint, 0.45f);
+                foreach (Renderer r in renderers)
+                {
+                    r.GetPropertyBlock(block);
+                    Assert.That(block.isEmpty, Is.False, $"{it.name}/{r.name} isn't tinted when highlighted");
+                    Assert.That(block.GetColor(baseColor), Is.Not.EqualTo(r.sharedMaterial.GetColor(baseColor)),
+                        $"{it.name}/{r.name}: highlight colour is the same as the material's");
+                    // A plain tint barely shows on white-based textured art: it must get visibly brighter.
+                    Assert.That(block.GetColor(baseColor).grayscale, Is.GreaterThan(r.sharedMaterial.GetColor(baseColor).grayscale * 1.2f),
+                        $"{it.name}/{r.name} doesn't light up when highlighted");
+                }
+
+                it.SetHighlighted(false, default, 0f);
+                foreach (Renderer r in renderers)
+                {
+                    r.GetPropertyBlock(block);
+                    Assert.That(block.isEmpty, Is.True, $"{it.name}/{r.name} stays tinted");
+                }
+            }
+        }
+
         [UnityTest]
         public IEnumerator HoveringTheClock_HighlightsIt_AndShowsItsName()
         {

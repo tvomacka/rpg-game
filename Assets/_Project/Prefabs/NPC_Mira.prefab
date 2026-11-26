@@ -70,7 +70,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: RpgGame::RpgGame.Characters.AgentLocomotionAnimator
   _animator: {fileID: 5394976164020288892}
-  _walkClipSpeed: 1.5
+  _runClipSpeed: 2.6309059
   _speedDampTime: 0.1
 --- !u!136 &7413601084384152532
 CapsuleCollider:
@@ -183,6 +183,10 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: f9d87ef2b07353545a2059484f8bd7ce, type: 2}
+    - target: {fileID: 8483050105962444629, guid: bb26e97efe93eca46949e2bc76525cab, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
