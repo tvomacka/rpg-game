@@ -74,7 +74,6 @@ namespace RpgGame.Editor
         private const string WallPrefab = PropPrefabs + "/House_Wall.prefab";
         private const string LowWallPrefab = PropPrefabs + "/" + PlaceholderArtBuilder.LowWallPrefab + ".prefab";
         private const string WindowPrefab = PropPrefabs + "/House_WallWindow.prefab";
-        private const string DoorwayPrefab = PropPrefabs + "/House_WallDoorway.prefab";
         private const string FloorPrefab = PropPrefabs + "/House_Floor.prefab";
 
         [MenuItem("RpgGame/Rebuild FirstCase Scene")]
@@ -155,11 +154,12 @@ namespace RpgGame.Editor
 
             float hw = HouseWidth / 2f, hd = HouseDepth / 2f, t = WallThickness;
 
-            // Back walls (camera looks at their inner face): full height. The study's window is in the north wall,
-            // and the kitchen has a (closed) back door in the east wall.
+            // Back walls (camera looks at their inner face): full height. The study's window is in the north wall.
+            // No back door: the only openings are the front door and the study/kitchen doorway. A door that never
+            // opens teaches players that objects lie (owner decision, PR #15).
             Wall("Wall_North", walls, blockers, -hw - t / 2f, hw + t / 2f, hd, alongX: true,
                 WallPrefab, WindowPrefab, WallPrefab, WallPrefab);
-            Wall("Wall_East", walls, blockers, -hd, hd, hw, alongX: false, DoorwayPrefab, WallPrefab);
+            Wall("Wall_East", walls, blockers, -hd, hd, hw, alongX: false, WallPrefab, WallPrefab);
 
             // Camera-facing walls: low cutaways so the interior stays visible.
             float doorL = FrontDoorX - DoorWidth / 2f, doorR = FrontDoorX + DoorWidth / 2f;

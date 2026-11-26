@@ -110,6 +110,44 @@ namespace RpgGame.Tests.PlayMode
             Assert.That(checkedWalls, Is.EqualTo(5), "Expected 5 cutaway wall segments (south A/B, west, partition A/B)");
         }
 
+        /// <summary>
+        /// The only ways in are the front door (south wall) and, inside, the study/kitchen doorway. No door that
+        /// doesn't open (owner decision, PR #15): from behind the house the path must go round to the front door.
+        /// </summary>
+        [Test]
+        public void TheFrontDoorIsTheOnlyWayIn()
+        {
+            GameObject walls = GameObject.Find("Level/House/Walls");
+            Assert.That(walls, Is.Not.Null);
+            foreach (Transform t in walls.GetComponentsInChildren<Transform>())
+                Assert.That(t.name, Does.Not.Contain("Doorway"), $"'{t.name}' is a door in a wall");
+
+            Vector3[] outside = { new(7f, 0f, 0f), new(7f, 0f, 2f), new(0f, 0f, 5f), new(-3f, 0f, 5f), new(3f, 0f, 5f) };
+            Vector3[] inside = { FirstCaseMovementTests.KitchenPoint, FirstCaseMovementTests.StudyPoint };
+            foreach (Vector3 from in outside)
+            foreach (Vector3 to in inside)
+            {
+                var path = new NavMeshPath();
+                NavMesh.CalculatePath(OnNavMesh(from), OnNavMesh(to), NavMesh.AllAreas, path);
+                Assert.That(path.status, Is.EqualTo(NavMeshPathStatus.PathComplete), $"{from} → {to}");
+                for (int i = 1; i < path.corners.Length; i++)
+                {
+                    Vector3 a = path.corners[i - 1], b = path.corners[i];
+                    if ((a.x - 5f) * (b.x - 5f) < 0f)
+                        Assert.That(Mathf.Lerp(a.z, b.z, (5f - a.x) / (b.x - a.x)), Is.Not.InRange(-3.1f, 3.1f),
+                            $"{from} → {to} goes through the east wall");
+                    if ((a.z - 3f) * (b.z - 3f) < 0f)
+                        Assert.That(Mathf.Lerp(a.x, b.x, (3f - a.z) / (b.z - a.z)), Is.Not.InRange(-5.1f, 5.1f),
+                            $"{from} → {to} goes through the north wall");
+                }
+
+                List<float> crossings = CrossingsOfSouthWall(path.corners);
+                Assert.That(crossings, Is.Not.Empty, $"{from} → {to} never came in through the south wall");
+                foreach (float x in crossings)
+                    Assert.That(x, Is.InRange(FrontDoorMinX, FrontDoorMaxX), $"{from} → {to} enters at x={x:F2}, not the front door");
+            }
+        }
+
         // ---------- helpers ----------
 
         private static Vector3 OnNavMesh(Vector3 p)
