@@ -23,6 +23,10 @@ namespace RpgGame.Interaction
         [Tooltip("Talk line until dialogue exists (M4). {0} is the person's display name.")]
         public string TalkPlaceholderFormat;
 
+        [Header("Talking")]
+        [Tooltip("How fast a person turns to face the player, and back afterwards, in degrees per second.")]
+        [Min(1f)] public float NpcTurnSpeed = 240f;
+
         [Header("Hover")]
         public Color HighlightColor = new(1f, 0.85f, 0.35f);
         [Range(0f, 1f)] public float HighlightAmount = 0.45f;

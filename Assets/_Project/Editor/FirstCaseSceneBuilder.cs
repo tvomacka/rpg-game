@@ -95,7 +95,7 @@ namespace RpgGame.Editor
                           ?? throw new InvalidOperationException($"Missing input actions at {InputActionsPath}");
 
             GameObject level = BuildLevel(mats);
-            BuildInteractables(level.transform, mats);
+            BuildInteractables(level.transform, mats, interaction);
             BuildRoof(mats);
             ClickMarker marker = BuildClickMarker(mats);
             GameObject player = BuildPlayer(mats, movement, actions, marker);
@@ -163,7 +163,7 @@ namespace RpgGame.Editor
         /// Solid things sit under Not Walkable groups in Level so the NavMesh bakes round them; the rug is
         /// outside Level so the floor under it stays walkable.
         /// </summary>
-        private static void BuildInteractables(Transform level, Materials mats)
+        private static void BuildInteractables(Transform level, Materials mats, InteractionSettings settings)
         {
             Transform props = NotWalkableGroup("Interactables", level);
 
@@ -208,19 +208,20 @@ namespace RpgGame.Editor
 
             // People: still capsules in their own colour, facing into the space they stand in.
             Transform npcs = NotWalkableGroup("NPCs", level);
-            Npc("NPC_Mira", npcs, new Vector3(3.9f, 0f, 0.6f), yaw: 250f, mats,
+            Npc("NPC_Mira", npcs, new Vector3(3.9f, 0f, 0.6f), yaw: 250f, mats, settings,
                 Definition("NPC_Mira", "Mira", InteractionKind.Talk, null),
                 interactionPoint: new Vector3(2.7f, 0f, 1f));
-            Npc("NPC_Hollen", npcs, new Vector3(-8f, 0f, -7.5f), yaw: 45f, mats,
+            Npc("NPC_Hollen", npcs, new Vector3(-8f, 0f, -7.5f), yaw: 45f, mats, settings,
                 Definition("NPC_Hollen", "Hollen", InteractionKind.Talk, null),
                 interactionPoint: new Vector3(-6.9f, 0f, -6.9f));
         }
 
-        private static void Npc(string name, Transform parent, Vector3 position, float yaw, Materials mats,
+        private static void Npc(string name, Transform parent, Vector3 position, float yaw, Materials mats, InteractionSettings settings,
                                 InteractableDefinition definition, Vector3 interactionPoint)
         {
             Interactable npc = MakeInteractable(name, parent, position, definition, interactionPoint);
             npc.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            SetRef(npc.gameObject.AddComponent<NpcFacing>(), "_settings", settings); // turns to the player while talking
             Primitive(PrimitiveType.Capsule, "Body", npc.transform, new Vector3(0f, 1f, 0f), new Vector3(0.8f, 1f, 0.8f), mats.Npc);
             GameObject nose = Primitive(PrimitiveType.Cube, "FacingIndicator", npc.transform, new Vector3(0f, 1.5f, 0.35f),
                 new Vector3(0.25f, 0.15f, 0.25f), mats.Marker);

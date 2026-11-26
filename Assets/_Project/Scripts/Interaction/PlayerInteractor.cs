@@ -27,6 +27,7 @@ namespace RpgGame.Interaction
         private int _requestFrame;
         private Quaternion? _faceRotation;
         private Vector3 _popupOrigin;
+        private NpcFacing _talkPartner; // faces the player while the talk popup is open
 
         public bool HasPending => _pending != null && _pending.HasPending;
         public Interactable PendingTarget => _pending?.Target;
@@ -82,12 +83,20 @@ namespace RpgGame.Interaction
             if (_pending == null) return;
             _pending.Cancel();
             _faceRotation = null;
+            ClosePopup();
+        }
+
+        /// <summary>The only way the popup closes, so a talk partner always turns back.</summary>
+        private void ClosePopup()
+        {
             if (_ui != null) _ui.HidePopup();
+            if (_talkPartner != null) _talkPartner.ReturnToRest();
+            _talkPartner = null;
         }
 
         private void Update()
         {
-            if (_cancel != null && _cancel.WasPressedThisFrame() && _ui != null) _ui.HidePopup();
+            if (_cancel != null && _cancel.WasPressedThisFrame()) ClosePopup();
 
             // Skip the request frame: the agent's path (and so HasArrived) isn't valid until the next one.
             if (_pending.HasPending && Time.frameCount > _requestFrame)
@@ -100,7 +109,7 @@ namespace RpgGame.Interaction
             }
 
             if (IsPopupOpen && InteractionMath.HasWalkedAway(_popupOrigin, transform.position, _settings.PopupWalkAwayDistance))
-                _ui.HidePopup();
+                ClosePopup();
 
             TurnTowardsTarget();
         }
@@ -115,6 +124,8 @@ namespace RpgGame.Interaction
             {
                 if (InteractionMath.TryFlatLookRotation(transform.position, target.transform.position, out Quaternion face))
                     _faceRotation = face;
+                _talkPartner = target.GetComponent<NpcFacing>();
+                if (_talkPartner != null) _talkPartner.FaceTowards(transform.position);
                 body = InteractionMath.TalkPlaceholder(_settings.TalkPlaceholderFormat, target.DisplayName);
             }
             else

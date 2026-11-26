@@ -134,6 +134,36 @@ namespace RpgGame.Tests.PlayMode
             Assert.That(Vector3.Angle(forward, toMira), Is.LessThan(5f), "Player isn't facing Mira");
         }
 
+        [UnityTest, Timeout(40000)]
+        public IEnumerator Mira_TurnsToFaceThePlayer_ThenBackWhenThePopupCloses()
+        {
+            Interactable mira = Find("NPC_Mira");
+            var facing = mira.GetComponent<NpcFacing>();
+            Assert.That(facing, Is.Not.Null, "Mira has no NpcFacing");
+            float restYaw = mira.transform.eulerAngles.y;
+
+            _input.HandleClick(ScreenPointOf(mira));
+            yield return WaitForPopup();
+            Assert.That(_ui.IsPopupOpen, Is.True, "Talk popup never opened");
+            Assert.That(facing.IsFacingSomeone, Is.True);
+
+            yield return WaitUntilSettled(facing);
+            Vector3 toPlayer = _mover.transform.position - mira.transform.position;
+            toPlayer.y = 0f;
+            Vector3 miraForward = mira.transform.forward;
+            Assert.That(miraForward.y, Is.EqualTo(0f).Within(1e-4f), "Mira tilted: she should only turn about Y");
+            Assert.That(Vector3.Angle(miraForward, toPlayer), Is.LessThan(5f), "Mira isn't facing the player");
+
+            // Close the popup by clicking elsewhere (Esc and walking away go through the same close path).
+            _input.HandleClick(_camera.WorldToScreenPoint(mira.InteractionPoint.position));
+            Assert.That(_ui.IsPopupOpen, Is.False);
+            Assert.That(facing.IsFacingSomeone, Is.False);
+
+            yield return WaitUntilSettled(facing);
+            Assert.That(Mathf.Abs(Mathf.DeltaAngle(mira.transform.eulerAngles.y, restYaw)), Is.LessThan(0.5f),
+                "Mira didn't turn back to her original facing");
+        }
+
         [UnityTest, Timeout(30000)]
         public IEnumerator ClickingTheGroundMidWalk_CancelsThePendingInteraction()
         {
@@ -179,6 +209,14 @@ namespace RpgGame.Tests.PlayMode
         /// <summary>Screen position of the middle of the object's first collider.</summary>
         private Vector3 ScreenPointOf(Interactable it) =>
             _camera.WorldToScreenPoint(it.GetComponentInChildren<Collider>().bounds.center);
+
+        private static IEnumerator WaitUntilSettled(NpcFacing facing)
+        {
+            yield return null; // let the new target take effect
+            float deadline = Time.time + 5f;
+            while (!facing.IsSettled && Time.time < deadline) yield return null;
+            Assert.That(facing.IsSettled, Is.True, "Mira never finished turning");
+        }
 
         private IEnumerator WaitForPopup()
         {

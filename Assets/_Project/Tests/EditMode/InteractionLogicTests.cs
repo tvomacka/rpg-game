@@ -231,6 +231,68 @@ namespace RpgGame.Tests.EditMode
         }
     }
 
+    public class FacingStateTests
+    {
+        [Test]
+        public void StartsSettledAtRest()
+        {
+            var s = new FacingState(30f);
+            Assert.That(s.TargetYaw, Is.EqualTo(30f));
+            Assert.That(s.IsFacingSomeone, Is.False);
+            Assert.That(s.IsSettled(30f), Is.True);
+        }
+
+        [Test]
+        public void Face_TurnsAtTheGivenRate_AndLandsExactlyOnTarget()
+        {
+            var s = new FacingState(0f);
+            s.Face(90f);
+            Assert.That(s.IsFacingSomeone, Is.True);
+
+            float yaw = s.Step(0f, degreesPerSecond: 100f, deltaTime: 0.5f);
+            Assert.That(yaw, Is.EqualTo(50f).Within(1e-4f), "Turns rate × time, not instantly");
+            Assert.That(s.IsSettled(yaw), Is.False);
+
+            yaw = s.Step(yaw, 100f, 0.5f);
+            Assert.That(yaw, Is.EqualTo(90f).Within(1e-4f), "Doesn't overshoot");
+            Assert.That(s.IsSettled(yaw), Is.True);
+        }
+
+        [Test]
+        public void Turning_TakesTheShortWayRound()
+        {
+            var s = new FacingState(350f);
+            s.Face(10f);
+            float yaw = s.Step(350f, 10f, 1f);
+            Assert.That(Mathf.DeltaAngle(yaw, 0f), Is.EqualTo(0f).Within(1e-4f), "350° → 10° goes through 0°, not 180°");
+        }
+
+        [Test]
+        public void ReturnToRest_TurnsBackToTheOriginalFacing()
+        {
+            var s = new FacingState(250f);
+            s.Face(120f);
+            float yaw = 120f; // facing the player
+            s.ReturnToRest();
+            Assert.That(s.IsFacingSomeone, Is.False);
+            Assert.That(s.TargetYaw, Is.EqualTo(250f));
+            Assert.That(s.IsSettled(yaw), Is.False);
+
+            for (int i = 0; i < 100 && !s.IsSettled(yaw); i++) yaw = s.Step(yaw, 240f, 0.02f);
+            Assert.That(Mathf.DeltaAngle(yaw, 250f), Is.EqualTo(0f).Within(1e-4f));
+        }
+
+        [Test]
+        public void YawTowards_IsMeasuredFromNorthClockwise_OnTheGround()
+        {
+            Assert.That(FacingState.TryYawTowards(Vector3.zero, new Vector3(0f, 5f, 2f), out float north), Is.True);
+            Assert.That(north, Is.EqualTo(0f).Within(1e-4f));
+            FacingState.TryYawTowards(Vector3.zero, new Vector3(3f, 0f, 0f), out float east);
+            Assert.That(east, Is.EqualTo(90f).Within(1e-4f));
+            Assert.That(FacingState.TryYawTowards(Vector3.one, Vector3.one + Vector3.up, out _), Is.False, "Same spot: no direction");
+        }
+    }
+
     public class InteractionMathTests
     {
         [Test]
