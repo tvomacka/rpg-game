@@ -101,3 +101,6 @@ InitTestScene*.unity*
 # Editor-generated
 .vscode/
 *.slnx
+
+# Local test runner output (run-unity.ps1)
+/[Tt]est[Rr]esults/
