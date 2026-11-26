@@ -70,7 +70,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: RpgGame::RpgGame.Characters.AgentLocomotionAnimator
   _animator: {fileID: 880087221280380813}
-  _walkClipSpeed: 1.5
+  _runClipSpeed: 2.6309059
   _speedDampTime: 0.1
 --- !u!136 &2837314644493155191
 CapsuleCollider:

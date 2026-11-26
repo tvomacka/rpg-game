@@ -11,7 +11,7 @@ namespace RpgGame.Tests.EditMode
 {
     /// <summary>
     /// Issue #11: every KayKit placeholder prefab loads, has no missing scripts or materials, renders with URP
-    /// (no pink), and the character prefabs animate Idle/Walk from their NavMeshAgent.
+    /// (no pink), and the character prefabs animate Idle/Run from their NavMeshAgent.
     /// </summary>
     public class PlaceholderArtPrefabTests
     {
@@ -29,7 +29,7 @@ namespace RpgGame.Tests.EditMode
             // Yard
             "Prop_Brazier", "Prop_Fence", "Prop_FenceGate",
             // House pieces
-            "House_Wall", "House_WallDoorway", "House_WallWindow", "House_Floor",
+            "House_Wall", "House_WallDoorway", "House_WallWindow", "House_WallLow", "House_Floor",
         };
 
         private static IEnumerable<string> AllPrefabPaths =>
@@ -86,7 +86,7 @@ namespace RpgGame.Tests.EditMode
         }
 
         [TestCaseSource(nameof(CharacterPrefabs))]
-        public void Character_AnimatorHasIdleAndWalkDrivenBySpeed(string name)
+        public void Character_AnimatorHasIdleAndRunDrivenBySpeed(string name)
         {
             GameObject prefab = Load($"{PrefabRoot}/{name}.prefab");
             var animator = prefab.GetComponentInChildren<Animator>(true);
@@ -99,21 +99,22 @@ namespace RpgGame.Tests.EditMode
             Assert.That(controller.parameters.Select(p => (p.name, p.type)),
                 Does.Contain((LocomotionAnimation.SpeedParameter, AnimatorControllerParameterType.Float)));
             Assert.That(controller.parameters.Select(p => (p.name, p.type)),
-                Does.Contain((LocomotionAnimation.WalkRateParameter, AnimatorControllerParameterType.Float)));
+                Does.Contain((LocomotionAnimation.RunRateParameter, AnimatorControllerParameterType.Float)));
 
             AnimatorStateMachine sm = controller.layers[0].stateMachine;
             AnimatorState idle = sm.states.Select(s => s.state).SingleOrDefault(s => s.name == LocomotionAnimation.IdleState);
-            AnimatorState walk = sm.states.Select(s => s.state).SingleOrDefault(s => s.name == LocomotionAnimation.WalkState);
+            AnimatorState run = sm.states.Select(s => s.state).SingleOrDefault(s => s.name == LocomotionAnimation.RunState);
             Assert.That(idle, Is.Not.Null, "Idle state");
-            Assert.That(walk, Is.Not.Null, "Walk state");
+            Assert.That(run, Is.Not.Null, "Run state");
             Assert.That(sm.defaultState, Is.SameAs(idle), "starts in Idle");
             Assert.That(idle.motion, Is.InstanceOf<AnimationClip>(), "Idle has a clip");
-            Assert.That(walk.motion, Is.InstanceOf<AnimationClip>(), "Walk has a clip");
+            Assert.That(run.motion, Is.InstanceOf<AnimationClip>(), "Run has a clip");
+            Assert.That(run.motion.name, Is.EqualTo("Running_A"), "Run plays the pack's run clip (owner decision, #11)");
             Assert.That(((AnimationClip)idle.motion).isLooping, Is.True, "Idle loops");
-            Assert.That(((AnimationClip)walk.motion).isLooping, Is.True, "Walk loops");
+            Assert.That(((AnimationClip)run.motion).isLooping, Is.True, "Run loops");
 
-            AssertTransition(idle, walk, AnimatorConditionMode.Greater);
-            AssertTransition(walk, idle, AnimatorConditionMode.Less);
+            AssertTransition(idle, run, AnimatorConditionMode.Greater);
+            AssertTransition(run, idle, AnimatorConditionMode.Less);
         }
 
         private static void AssertTransition(AnimatorState from, AnimatorState to, AnimatorConditionMode mode)
@@ -123,7 +124,59 @@ namespace RpgGame.Tests.EditMode
             Assert.That(t.hasExitTime, Is.False, $"{from.name} -> {to.name} reacts immediately");
             Assert.That(t.conditions, Has.Exactly(1).Matches<AnimatorCondition>(c =>
                 c.parameter == LocomotionAnimation.SpeedParameter && c.mode == mode &&
-                Mathf.Approximately(c.threshold, LocomotionAnimation.WalkThreshold)));
+                Mathf.Approximately(c.threshold, LocomotionAnimation.MoveThreshold)));
+        }
+
+        /// <summary>
+        /// No foot sliding at the game's movement speed: the run clip's measured ground speed must be close enough
+        /// to MovementSettings.MoveSpeed that the playback rate needed to match it isn't clamped.
+        /// </summary>
+        [TestCaseSource(nameof(CharacterPrefabs))]
+        public void Character_RunClipMatchesTheMovementSpeedWithoutClamping(string name)
+        {
+            var driver = Load($"{PrefabRoot}/{name}.prefab").GetComponent<AgentLocomotionAnimator>();
+            var movement = AssetDatabase.LoadAssetAtPath<RpgGame.Movement.MovementSettings>("Assets/_Project/Data/PlayerMovement.asset");
+            Assert.That(movement, Is.Not.Null);
+
+            Assert.That(driver.RunClipSpeed, Is.InRange(1.5f, 6f), "measured run clip ground speed (m/s) is implausible");
+            float needed = movement.MoveSpeed / driver.RunClipSpeed;
+            Assert.That(needed, Is.InRange(LocomotionAnimation.MinRunRate, LocomotionAnimation.MaxRunRate),
+                $"at {movement.MoveSpeed} m/s the run clip would need rate {needed:F2}, which is clamped: feet would slide");
+            Assert.That(LocomotionAnimation.RunRate(movement.MoveSpeed, driver.RunClipSpeed) * driver.RunClipSpeed,
+                Is.EqualTo(movement.MoveSpeed).Within(1e-3f), "feet move at the agent's speed");
+        }
+
+        [Test]
+        public void Characters_UseThreeDifferentModels()
+        {
+            // #11 part 2: the player, Mira and Hollen must be easy to tell apart.
+            var bodies = CharacterPrefabs.Select(n => string.Join(",",
+                Load($"{PrefabRoot}/{n}.prefab").GetComponentsInChildren<SkinnedMeshRenderer>()
+                    .Select(r => r.sharedMesh.name).OrderBy(x => x))).ToArray();
+            Assert.That(bodies.Distinct().Count(), Is.EqualTo(CharacterPrefabs.Length), string.Join(" | ", bodies));
+        }
+
+        [Test]
+        public void LowWall_IsTheWallCutDownToCutawayHeight()
+        {
+            Bounds Size(string prefab)
+            {
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(Load($"{PrefabRoot}/Props/{prefab}.prefab"));
+                try
+                {
+                    return instance.GetComponentsInChildren<Renderer>().Select(r => r.bounds).Aggregate((a, c) => { a.Encapsulate(c); return a; });
+                }
+                finally
+                {
+                    Object.DestroyImmediate(instance);
+                }
+            }
+
+            Bounds wall = Size("House_Wall"), low = Size("House_WallLow");
+            Assert.That(low.size.y, Is.EqualTo(0.6f).Within(0.02f), "cutaway height");
+            Assert.That(low.min.y, Is.EqualTo(wall.min.y).Within(0.01f), "same base");
+            Assert.That(low.size.x, Is.EqualTo(wall.size.x).Within(0.05f), "same length");
+            Assert.That(low.size.z, Is.EqualTo(wall.size.z).Within(0.05f), "same thickness");
         }
 
         [Test]
@@ -159,22 +212,22 @@ namespace RpgGame.Tests.EditMode
     public class LocomotionAnimationTests
     {
         [Test]
-        public void WalkRate_StandingStill_IsOne() => Assert.That(LocomotionAnimation.WalkRate(0f, 1.5f), Is.EqualTo(1f));
+        public void RunRate_StandingStill_IsOne() => Assert.That(LocomotionAnimation.RunRate(0f, 1.5f), Is.EqualTo(1f));
 
         [Test]
-        public void WalkRate_AtClipSpeed_IsOne() => Assert.That(LocomotionAnimation.WalkRate(1.5f, 1.5f), Is.EqualTo(1f).Within(1e-5));
+        public void RunRate_AtClipSpeed_IsOne() => Assert.That(LocomotionAnimation.RunRate(1.5f, 1.5f), Is.EqualTo(1f).Within(1e-5));
 
         [Test]
-        public void WalkRate_ScalesWithAgentSpeed() => Assert.That(LocomotionAnimation.WalkRate(3f, 1.5f), Is.EqualTo(2f).Within(1e-5));
+        public void RunRate_ScalesWithAgentSpeed() => Assert.That(LocomotionAnimation.RunRate(3f, 1.5f), Is.EqualTo(2f).Within(1e-5));
 
         [Test]
-        public void WalkRate_IsClamped()
+        public void RunRate_IsClamped()
         {
-            Assert.That(LocomotionAnimation.WalkRate(100f, 1.5f), Is.EqualTo(LocomotionAnimation.MaxWalkRate));
-            Assert.That(LocomotionAnimation.WalkRate(0.2f, 1.5f), Is.EqualTo(LocomotionAnimation.MinWalkRate));
+            Assert.That(LocomotionAnimation.RunRate(100f, 1.5f), Is.EqualTo(LocomotionAnimation.MaxRunRate));
+            Assert.That(LocomotionAnimation.RunRate(0.2f, 1.5f), Is.EqualTo(LocomotionAnimation.MinRunRate));
         }
 
         [Test]
-        public void WalkRate_BadClipSpeed_IsOne() => Assert.That(LocomotionAnimation.WalkRate(3f, 0f), Is.EqualTo(1f));
+        public void RunRate_BadClipSpeed_IsOne() => Assert.That(LocomotionAnimation.RunRate(3f, 0f), Is.EqualTo(1f));
     }
 }

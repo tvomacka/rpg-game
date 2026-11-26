@@ -28,7 +28,13 @@ namespace RpgGame.Editor
         private const float HexagonKitScale = 1.6f;
 
         public const string IdleClip = "Idle";
-        public const string WalkClip = "Walking_A";
+        /// <summary>The moving clip. Owner decision (#11): agents move at 3.5 m/s, which is a run, so use the run clip.</summary>
+        public const string RunClip = "Running_A";
+
+        /// <summary>Generated: KayKit's wall cut down to cutaway height (KayKit has no low wall).</summary>
+        public const string LowWallMeshPath = "Assets/_Project/Art/Generated/wall_low.asset";
+        /// <summary>Height of the generated low wall, in metres. Matches the M1 cutaway walls.</summary>
+        public const float LowWallHeight = 0.6f;
 
         private const string Adventurers = KayKitRoot + "/CharacterPackAdventurers";
         private const string Furniture = KayKitRoot + "/FurnitureBits";
@@ -49,10 +55,18 @@ namespace RpgGame.Editor
 
         private static readonly string[] RogueGear = { "Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Knife", "Throwable" };
 
+        // Casting (#11 part 2): three different models so the three people read apart at a glance.
         private static readonly CharacterSpec[] Characters =
         {
-            new() { Prefab = "Player", Model = "RogueHooded", Atlas = "rogue_texture", Hide = RogueGear, IsPlayer = true },
-            new() { Prefab = "NPC_Mira", Model = "Rogue", Atlas = "rogue_texture", Hide = RogueGear },
+            new()
+            {
+                // The investigator: the Mage's long purple coat and cape (fits someone who reads magic),
+                // without the pointed hat and the spell gear.
+                Prefab = "Player", Model = "Mage", Atlas = "mage_texture", IsPlayer = true,
+                Hide = new[] { "Mage_Hat", "1H_Wand", "2H_Staff", "Spellbook", "Spellbook_open" },
+            },
+            // The maid: the pack's only woman, in her plain green tunic, without the rogue's cape and weapons.
+            new() { Prefab = "NPC_Mira", Model = "Rogue", Atlas = "rogue_texture", Hide = RogueGear.Append("Rogue_Cape").ToArray() },
             new()
             {
                 Prefab = "NPC_Hollen", Model = "Barbarian", Atlas = "barbarian_texture",
@@ -86,7 +100,9 @@ namespace RpgGame.Editor
         }
 
         public static IReadOnlyList<string> CharacterPrefabNames => Characters.Select(c => c.Prefab).ToArray();
-        public static IReadOnlyList<string> PropPrefabNames => Props.Select(p => p.Name).ToArray();
+        public static IReadOnlyList<string> PropPrefabNames => Props.Select(p => p.Name).Append(LowWallPrefab).ToArray();
+
+        public const string LowWallPrefab = "House_WallLow";
 
         private static PropSpec Single(string name, string model, float scale = KayKitScale, bool collider = true) =>
             new() { Name = name, Parts = new[] { new Part(model, scale) }, Collider = collider };
@@ -155,6 +171,7 @@ namespace RpgGame.Editor
         /// <summary>Texture atlas → generated material. One per atlas: every KayKit model in a pack shares it.</summary>
         private static readonly (string Folder, string Atlas)[] Atlases =
         {
+            (Adventurers, "mage_texture"),
             (Adventurers, "rogue_texture"),
             (Adventurers, "barbarian_texture"),
             (Furniture, "furniturebits_texture"),
@@ -202,9 +219,10 @@ namespace RpgGame.Editor
             }
 
             foreach (PropSpec p in Props) BuildPropPrefab(p);
+            BuildLowWallPrefab(materials[AtlasOf(Dungeon)]);
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"[PlaceholderArtBuilder] Built {Characters.Length} character and {Props.Length} prop prefabs.");
+            Debug.Log($"[PlaceholderArtBuilder] Built {Characters.Length} character and {Props.Length + 1} prop prefabs.");
         }
 
         private static string AtlasOf(string folder) => Atlases.First(a => a.Folder == folder).Atlas;
@@ -269,10 +287,10 @@ namespace RpgGame.Editor
 
             // The FBX carries 75 clips; import only the two the MVP uses.
             ModelImporterClipAnimation[] clips = importer.defaultClipAnimations
-                .Where(c => c.name == IdleClip || c.name == WalkClip)
+                .Where(c => c.name == IdleClip || c.name == RunClip)
                 .ToArray();
             if (clips.Length != 2)
-                throw new System.InvalidOperationException($"{path}: expected clips '{IdleClip}' and '{WalkClip}'.");
+                throw new System.InvalidOperationException($"{path}: expected clips '{IdleClip}' and '{RunClip}'.");
             foreach (ModelImporterClipAnimation clip in clips)
             {
                 clip.loopTime = true;
@@ -292,7 +310,7 @@ namespace RpgGame.Editor
             AnimationClip[] clips = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<AnimationClip>()
                 .Where(a => !a.name.StartsWith("__preview")).ToArray();
             AnimationClip idle = clips.Single(a => a.name == IdleClip);
-            AnimationClip walk = clips.Single(a => a.name == WalkClip);
+            AnimationClip run = clips.Single(a => a.name == RunClip);
 
             string path = $"{AnimatorFolder}/AC_{c.Prefab}.controller";
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(path)
@@ -302,7 +320,7 @@ namespace RpgGame.Editor
             controller.AddParameter(LocomotionAnimation.SpeedParameter, AnimatorControllerParameterType.Float);
             controller.AddParameter(new AnimatorControllerParameter
             {
-                name = LocomotionAnimation.WalkRateParameter,
+                name = LocomotionAnimation.RunRateParameter,
                 type = AnimatorControllerParameterType.Float,
                 defaultFloat = 1f,
             });
@@ -312,14 +330,14 @@ namespace RpgGame.Editor
 
             AnimatorState idleState = sm.AddState(LocomotionAnimation.IdleState, new Vector3(300f, 0f));
             idleState.motion = idle;
-            AnimatorState walkState = sm.AddState(LocomotionAnimation.WalkState, new Vector3(300f, 120f));
-            walkState.motion = walk;
-            walkState.speedParameterActive = true;
-            walkState.speedParameter = LocomotionAnimation.WalkRateParameter;
+            AnimatorState runState = sm.AddState(LocomotionAnimation.RunState, new Vector3(300f, 120f));
+            runState.motion = run;
+            runState.speedParameterActive = true;
+            runState.speedParameter = LocomotionAnimation.RunRateParameter;
             sm.defaultState = idleState;
 
-            AddTransition(idleState, walkState, AnimatorConditionMode.Greater);
-            AddTransition(walkState, idleState, AnimatorConditionMode.Less);
+            AddTransition(idleState, runState, AnimatorConditionMode.Greater);
+            AddTransition(runState, idleState, AnimatorConditionMode.Less);
 
             EditorUtility.SetDirty(controller);
             return controller;
@@ -330,7 +348,44 @@ namespace RpgGame.Editor
             AnimatorStateTransition t = from.AddTransition(to);
             t.hasExitTime = false;
             t.duration = 0.15f;
-            t.AddCondition(mode, LocomotionAnimation.WalkThreshold, LocomotionAnimation.SpeedParameter);
+            t.AddCondition(mode, LocomotionAnimation.MoveThreshold, LocomotionAnimation.SpeedParameter);
+        }
+
+        /// <summary>
+        /// Ground speed (m/s) the clip's feet imply: while a foot is planted it slides backwards relative to the
+        /// body at exactly the speed the body must move forward for it to stay put. Samples the clip on
+        /// <paramref name="model"/> (scaled as in the prefab) and takes the median planted-foot speed.
+        /// </summary>
+        public static float MeasureClipGroundSpeed(GameObject model, AnimationClip clip, Transform reference)
+        {
+            Transform[] feet = model.GetComponentsInChildren<Transform>(true).Where(t => t.name is "foot.l" or "foot.r").ToArray();
+            if (feet.Length != 2) throw new System.InvalidOperationException($"{model.name}: expected bones foot.l and foot.r.");
+
+            const int samples = 120;
+            float dt = clip.length / samples;
+            var positions = new Vector3[feet.Length, samples + 1];
+            for (int i = 0; i <= samples; i++)
+            {
+                clip.SampleAnimation(model, i * dt);
+                for (int f = 0; f < feet.Length; f++) positions[f, i] = reference.InverseTransformPoint(feet[f].position);
+            }
+
+            var speeds = new List<float>();
+            for (int f = 0; f < feet.Length; f++)
+            {
+                float minY = float.MaxValue;
+                for (int i = 0; i <= samples; i++) minY = Mathf.Min(minY, positions[f, i].y);
+                for (int i = 0; i < samples; i++)
+                {
+                    Vector3 a = positions[f, i], b = positions[f, i + 1];
+                    if (a.y > minY + 0.03f || b.y > minY + 0.03f) continue; // foot in the air
+                    speeds.Add(new Vector2(b.x - a.x, b.z - a.z).magnitude / dt);
+                }
+            }
+
+            if (speeds.Count == 0) throw new System.InvalidOperationException($"{clip.name}: no planted-foot frames found.");
+            speeds.Sort();
+            return speeds[speeds.Count / 2];
         }
 
         // ---------- Prefabs ----------
@@ -356,9 +411,13 @@ namespace RpgGame.Editor
                 animator.runtimeAnimatorController = controller;
                 animator.applyRootMotion = false;
 
+                float runSpeed = MeasureRunSpeed(modelPath);
+                Debug.Log($"[PlaceholderArtBuilder] {c.Prefab}: {RunClip} feet move at {runSpeed:F2} m/s");
+
                 var driver = root.AddComponent<AgentLocomotionAnimator>();
                 var so = new SerializedObject(driver);
                 so.FindProperty("_animator").objectReferenceValue = animator;
+                so.FindProperty("_runClipSpeed").floatValue = runSpeed;
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 if (c.IsPlayer)
@@ -375,6 +434,59 @@ namespace RpgGame.Editor
                 capsule.radius = 0.35f;
 
                 PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabRoot}/{c.Prefab}.prefab");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        /// <summary>Run clip ground speed at prefab scale, measured on a throwaway instance (sampling poses the bones).</summary>
+        private static float MeasureRunSpeed(string modelPath)
+        {
+            var root = new GameObject("RunSpeedProbe");
+            try
+            {
+                var model = (GameObject)Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(modelPath), root.transform);
+                model.transform.localScale = Vector3.one * KayKitScale;
+                AnimationClip run = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<AnimationClip>().Single(a => a.name == RunClip);
+                return MeasureClipGroundSpeed(model, run, root.transform);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        // ---------- Generated low wall ----------
+
+        /// <summary>
+        /// KayKit has no low wall, so cut the plain wall mesh at <see cref="LowWallHeight"/> and cap the cut.
+        /// Same footprint and pivot as House_Wall, so the scene can swap one for the other. No collider:
+        /// the scene's invisible full-height blockers do the blocking.
+        /// </summary>
+        private static void BuildLowWallPrefab(Material atlas)
+        {
+            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Dungeon + "/Models/wall.fbx");
+            Mesh full = source.GetComponentInChildren<MeshFilter>().sharedMesh;
+            EnsureFolder(System.IO.Path.GetDirectoryName(LowWallMeshPath).Replace('\\', '/'));
+            var low = AssetDatabase.LoadAssetAtPath<Mesh>(LowWallMeshPath); // refill in place: keeps the GUID
+            bool created = low == null;
+            if (created) low = new Mesh();
+            MeshCutter.CutBelow(full, LowWallHeight / KayKitScale, low);
+            low.name = "wall_low";
+            if (created) AssetDatabase.CreateAsset(low, LowWallMeshPath);
+            else EditorUtility.SetDirty(low);
+
+            var root = new GameObject(LowWallPrefab);
+            try
+            {
+                var model = new GameObject("wall_low");
+                model.transform.SetParent(root.transform, false);
+                model.transform.localScale = Vector3.one * KayKitScale;
+                model.AddComponent<MeshFilter>().sharedMesh = low;
+                model.AddComponent<MeshRenderer>().sharedMaterial = atlas;
+                PrefabUtility.SaveAsPrefabAsset(root, $"{PropFolder}/{LowWallPrefab}.prefab");
             }
             finally
             {

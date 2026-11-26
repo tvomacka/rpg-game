@@ -27,7 +27,7 @@ namespace RpgGame.Editor
             new[] { "Player", "NPC_Mira", "NPC_Hollen" },
             new[] { "Props/Prop_Desk", "Props/Prop_Chair", "Props/Prop_Ledger", "Props/Prop_Rug", "Props/Prop_PlantPot_Small", "Props/Prop_PlantPot_Large", "Props/Prop_Bookshelf", "Props/Prop_WallClock" },
             new[] { "Props/Prop_KitchenTable", "Props/Prop_Stool", "Props/Prop_KitchenShelves", "Props/Prop_Barrel", "Props/Prop_Keg", "Props/Prop_Crates", "Props/Prop_Hearth" },
-            new[] { "Props/Prop_Brazier", "Props/Prop_Fence", "Props/Prop_FenceGate", "Props/House_Wall", "Props/House_WallDoorway", "Props/House_WallWindow", "Props/House_Floor" },
+            new[] { "Props/Prop_Brazier", "Props/Prop_Fence", "Props/Prop_FenceGate", "Props/House_Wall", "Props/House_WallDoorway", "Props/House_WallWindow", "Props/House_WallLow", "Props/House_Floor" },
         };
 
         [MenuItem("RpgGame/Render Placeholder Art Lineup")]
@@ -140,7 +140,7 @@ namespace RpgGame.Editor
             return all;
         }
 
-        /// <summary>Characters: player mid-stride, NPCs in their idle pose (clips sampled directly).</summary>
+        /// <summary>Characters: player mid-run, NPCs in their idle pose (clips sampled directly).</summary>
         private static void Pose(GameObject go)
         {
             var animator = go.GetComponentInChildren<Animator>();
@@ -148,7 +148,7 @@ namespace RpgGame.Editor
             go.transform.rotation = Quaternion.Euler(0f, 180f, 0f); // face the camera
             AnimationClip[] clips = animator.runtimeAnimatorController.animationClips;
             bool walk = go.name == "Player";
-            AnimationClip clip = clips.First(c => c.name == (walk ? PlaceholderArtBuilder.WalkClip : PlaceholderArtBuilder.IdleClip));
+            AnimationClip clip = clips.First(c => c.name == (walk ? PlaceholderArtBuilder.RunClip : PlaceholderArtBuilder.IdleClip));
             clip.SampleAnimation(animator.gameObject, walk ? clip.length * 0.3f : 0f);
         }
 

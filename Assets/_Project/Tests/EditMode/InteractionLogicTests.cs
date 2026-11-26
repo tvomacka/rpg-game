@@ -322,4 +322,29 @@ namespace RpgGame.Tests.EditMode
             Assert.That(InteractionMath.TalkPlaceholder(null, "Mira"), Is.EqualTo("Mira"));
         }
     }
+
+    public class HighlightColorTests
+    {
+        private static readonly Color Gold = new(1f, 0.85f, 0.35f);
+
+        [Test]
+        public void WhiteBase_TexturedArt_GetsBrighterAndWarmer()
+        {
+            Color c = Interactable.HighlightColor(Color.white, Gold, 0.45f);
+            Assert.That(c.grayscale, Is.GreaterThan(1.2f), "multiplies the texture up, so it visibly lights up");
+            Assert.That(c.r, Is.GreaterThan(c.b), "warm");
+        }
+
+        [Test]
+        public void DarkBase_GreyBox_GetsBrighter() =>
+            Assert.That(Interactable.HighlightColor(new Color(0.3f, 0.3f, 0.3f), Gold, 0.45f).grayscale, Is.GreaterThan(0.5f));
+
+        [Test]
+        public void KeepsAlpha() =>
+            Assert.That(Interactable.HighlightColor(new Color(1f, 1f, 1f, 0.5f), Gold, 0.45f).a, Is.EqualTo(0.5f));
+
+        [Test]
+        public void ZeroAmount_IsUnchanged() =>
+            Assert.That(Interactable.HighlightColor(new Color(0.2f, 0.4f, 0.6f), Gold, 0f), Is.EqualTo(new Color(0.2f, 0.4f, 0.6f)));
+    }
 }

@@ -10,7 +10,6 @@ namespace RpgGame.Interaction
     public sealed class Interactable : MonoBehaviour
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-
         [SerializeField] private InteractableDefinition _definition;
         [Tooltip("Where the player stands to use this. Empty: the nearest NavMesh point within range.")]
         [SerializeField] private Transform _interactionPoint;
@@ -59,11 +58,21 @@ namespace RpgGame.Interaction
                     continue;
                 }
 
-                Color baseColor = r.sharedMaterial.GetColor(BaseColorId);
                 _block.Clear();
-                _block.SetColor(BaseColorId, Color.Lerp(baseColor, tint, amount));
+                _block.SetColor(BaseColorId, HighlightColor(r.sharedMaterial.GetColor(BaseColorId), tint, amount));
                 r.SetPropertyBlock(_block);
             }
+        }
+
+        /// <summary>
+        /// Tinted towards <paramref name="tint"/> and brightened. Textured art has a white base colour that the texture
+        /// is multiplied by, so a plain tint barely shows on it; going above 1 lights the texture up instead.
+        /// </summary>
+        public static Color HighlightColor(Color baseColor, Color tint, float amount)
+        {
+            Color c = Color.Lerp(baseColor, tint, amount) * (1f + amount);
+            c.a = baseColor.a;
+            return c;
         }
 
         private void OnDrawGizmosSelected()
