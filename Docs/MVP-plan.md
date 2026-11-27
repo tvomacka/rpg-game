@@ -1,6 +1,6 @@
 # MVP implementation plan — "The first case"
 
-> Agreed 2026-11-26. Implements DESIGN.md §8. Once agreed, this goes into the repo as `Docs/MVP-plan.md`.
+> Agreed 2026-11-26. Implements DESIGN.md §9. Once agreed, this goes into the repo as `Docs/MVP-plan.md`.
 
 ## Goal
 
@@ -10,26 +10,32 @@ Placeholder art throughout. **No save/load, no character creation, no combat, no
 
 ## The case (content draft)
 
-*Working title: "The Stopped Clock".* A cloth merchant, Aldric, is found dead in his study one morning.
-The town healer called it heart failure. His sister doesn't believe it and hires you.
+*Working title: "The Stopped Clock".* Reworked 2026-11-27 to follow the rules of magic (DESIGN.md §3).
 
-| Clue | Where | How you find it | What it means |
+A cloth merchant, **Aldric**, is found dead in his study one morning. The town healer called it heart failure. His sister doesn't believe it and hires you.
+
+**What really happened:** Aldric's business partner **Hollen** owed Aldric a large debt he couldn't repay. He borrowed from a shady lender to hire a mage, who drew a **triggered chalk circle targeted at Aldric** (using hair from Aldric's hairbrush) under the rug by the desk. To get the mage in at night, Hollen had the maid **Mira** open the back gate, then wiped her memory of it with a cheap **Mind scroll** in the kitchen. The next evening Aldric stepped on the rug and the circle fired. Hollen was at the guild hall, a solid alibi.
+
+| Clue | Where | How you find it | What it means (by the rules) |
 |---|---|---|---|
-| Withered plants on the study windowsill — only there | Study | Inspect | Strong life-draining magic was cast here |
-| Clock stopped, hinges rusted overnight | Study | Inspect; **Arcane Sense** check reveals "aged, not broken" | Accelerated-aging side effect → the same spell |
-| Ledger with a page torn out | Study desk | Inspect | Someone hid a business matter |
-| Scorched chalk marks under the rug | Study | Inspect the rug (easy to miss) | A ritual circle — the spell was prepared, not spontaneous |
-| Maid (Mira) is nauseous and can't recall the evening | Kitchen, dialogue | Talk; **Medicine** check names it as memory tampering | Someone wiped her memory — she's a witness, not the culprit |
-| Partner (Hollen) claims he "hadn't seen Aldric in weeks" | Yard, dialogue | Talk | — |
-| Hollen's boots: the same chalk dust | Yard, dialogue/inspect | Inspect Hollen, or ask about it after finding the chalk marks | He was in the study |
-| Torn ledger page in the yard brazier | Yard | Inspect | Debt Hollen owed Aldric → motive |
+| Withered plants on the windowsill nearest the desk; the far windowsill is fine | Study | Inspect | A strong working fired near the desk, not at the door |
+| Wall clock stopped at 9:40 pm, spring seized | Study | Inspect; **Arcane Sense** shows "seized by a draw, not broken" | Time the working fired = time of death |
+| Faint chalk circle under the rug; a few grey hairs in its lines | Study | Inspect the rug (easy to miss) | Triggered, targeted ritual. Nobody was present when it fired, and someone needed Aldric's hair |
+| Aldric's hairbrush on the study side table, picked clean of hair | Study (side table) | Inspect | Where the hair came from; who has access? (Mira cleans there) |
+| Mira: nauseous, can't account for the night before last | Kitchen, dialogue | Talk; **Medicine** recognises a Mind working | Someone wiped her memory; she's a witness, not the culprit |
+| Mouldy bread and dried herbs only on one kitchen shelf | Kitchen | Inspect | A second, small working fired here (the memory wipe) |
+| Hollen: "I was at the guild hall all evening" (true) | Yard, dialogue | Talk | A real alibi that only clears him if the death needed someone present |
+| Chalk dust on Hollen's boots | Yard, dialogue/inspect | Inspect Hollen, or ask about it after finding the circle | He was in the study when the circle was drawn |
+| Half-burnt papers in the yard brazier: torn ledger page (Hollen's debt) and a loan note from a lender | Yard | Inspect | Motive, plus the money for an expensive triggered ritual |
 
-- **Right answer:** Hollen, by life-draining magic (ritual). **Wrong answers that still end:** the maid;
-  "natural death"; Hollen with the wrong method (partial ending).
-- Two NPCs as DESIGN.md §8 says: Mira (witness, wrongly suspicious) and Hollen (culprit).
-  The sister who hires you is a text intro, not an NPC.
-- Two skill checks show pillar 1 without a full skill system: the character has fixed skill values;
-  one check passes, one fails by default, and a debug toggle flips them so you can see the difference.
+**Conclusion panel:** culprit = Hollen; method = triggered, targeted chalk circle (Life school).
+- **Right:** Hollen + triggered circle.
+- **Partial:** Hollen + a method that needed him present (his alibi makes the case collapse in court).
+- **Wrong:** Mira (she was used); "natural death"; anyone + "scroll".
+
+**Left for later cases:** the mage who drew the circle, and the lender.
+
+This stays at **two NPCs** and about nine clues. It teaches the core rules through play: centre of the draw, stopped clock, triggers, targeting, Mind symptoms, and money.
 
 ## Decided: how the player concludes (DESIGN.md open question 2)
 
@@ -57,24 +63,32 @@ Each milestone is one PR, playable in the editor when merged.
 **M3 — Clues and the journal**
 - ScriptableObjects: `ClueDefinition` (id, title, text, optional skill check), `CaseDefinition` (clues, suspects, methods, endings).
 - Runtime `CaseState`: found clues, fires `OnClueFound`. Fixed `PlayerSkills` (Arcane Sense, Medicine) + debug toggle.
-- Inspecting an object can grant a clue; skill-gated clues show extra text only when the check passes.
+  The two checks show pillar 1 without a full skill system: one passes and one fails by default; the toggle flips them.
+- Inspecting an object can grant a clue; skill-gated clues show extra text only when the check passes
+  (Arcane Sense on the stopped clock: "seized by a draw, not broken").
+- Inspectable clues in the house and yard: withered windowsill plants (near desk vs far), stopped clock (9:40 pm),
+  chalk circle with hairs under the rug, picked-clean hairbrush, mouldy kitchen shelf, brazier papers (ledger page + loan note).
 - Journal UI (J key + button): list of found clues with text; "new clue" notification.
 - Tests: EditMode — clue granted once, skill gate pass/fail, event fires.
 
 **M4 — Dialogue**
 - Yarn Spinner DialogueRunner + line/option presenters (placeholder UI).
 - Yarn commands/functions bridging to the case: `<<add_clue "id">>`, `has_clue("id")`, `skill("Medicine")`.
-- Write Mira's and Hollen's dialogue, including options that only appear after finding clues.
+- Write Mira's and Hollen's dialogue (still two NPCs), including options that only appear after finding clues:
+  **Medicine** on Mira recognises a Mind working; Hollen gives his true guild-hall alibi; his chalk-dusted boots can be
+  inspected, or raised once the chalk circle is found.
 - Tests: EditMode for the bridge functions.
 
 **M5 — Conclusion and endings**
 - "Close the case" panel in the journal: pick culprit + method, confirm.
-- Ending lookup from (culprit, method) → ending text screen → restart.
+- Ending lookup from (culprit, method) → ending text screen → restart. Right: Hollen + triggered, targeted chalk circle;
+  partial: Hollen + a method that needed him present; wrong: Mira, "natural death", anyone + "scroll".
 - Tests: EditMode — every (culprit, method) pair maps to an ending.
 
 **M6 — Make it readable, then playtest**
-- Visual traces: withered plant, rusted clock, chalk marks under the rug — placeholder but distinct.
-- Intro text (the sister's request), clear hover labels, journal hint when nothing is left.
+- Visual traces: withered plants on the windowsill near the desk (far one healthy), stopped wall clock,
+  faint chalk circle under the rug, hairbrush on the side table, mouldy shelf in the kitchen — placeholder but distinct.
+- Intro text (the sister's request; she is a text intro, not an NPC), clear hover labels, journal hint when nothing is left.
 - Playtest with someone who hasn't seen it; fix what confuses them. This is the MVP "done" check.
 
 ## Technical choices (for the workers)
