@@ -14,7 +14,7 @@ Placeholder art throughout. **No save/load, no character creation, no combat, no
 
 A cloth merchant, **Aldric**, is found dead in his study one morning. The town healer called it heart failure. His sister doesn't believe it and hires you.
 
-**What really happened:** Aldric's business partner **Hollen** owed Aldric a large debt he couldn't repay. He borrowed from a shady lender to hire a mage, who drew a **triggered chalk circle targeted at Aldric** (using hair from Aldric's hairbrush) under the rug by the desk. To get the mage in at night, Hollen had the maid **Mira** open the back gate, then wiped her memory of it with a cheap **Mind scroll** in the kitchen. The next evening Aldric stepped on the rug and the circle fired. Hollen was at the guild hall, a solid alibi.
+**What really happened:** Aldric's business partner **Hollen** owed Aldric a large debt he couldn't repay. He borrowed from a shady lender to hire a mage, who drew a **triggered chalk circle targeted at Aldric** (using hair from Aldric's hairbrush) under the rug by the desk. To get the mage in at night, Hollen had the maid **Mira** open the yard gate and the front door, then wiped her memory of it with a cheap **Mind scroll** in the kitchen. The next evening Aldric stepped on the rug and the circle fired. Hollen was at the guild hall, a solid alibi.
 
 | Clue | Where | How you find it | What it means (by the rules) |
 |---|---|---|---|
@@ -68,6 +68,9 @@ Each milestone is one PR, playable in the editor when merged.
   (Arcane Sense on the stopped clock: "seized by a draw, not broken").
 - Inspectable clues in the house and yard: withered windowsill plants (near desk vs far), stopped clock (9:40 pm),
   chalk circle with hairs under the rug, picked-clean hairbrush, mouldy kitchen shelf, brazier papers (ledger page + loan note).
+- Scene props the reworked case needs in `FirstCase` (placeholder art is fine): a second study windowsill with healthy
+  plants (the comparison), a side table with Aldric's hairbrush, a kitchen shelf with bread and herbs (the second trace),
+  and a wall clock with a readable stopped time.
 - Journal UI (J key + button): list of found clues with text; "new clue" notification.
 - Tests: EditMode — clue granted once, skill gate pass/fail, event fires.
 
